@@ -185,7 +185,7 @@ def fetch_details(browser, dict_post):
 
     username = browser.find_one("a.ZIAjV")
     location = browser.find_one("a.O4GlU")
-
+    
     if username:
         dict_post["username"] = username.text
     if location:

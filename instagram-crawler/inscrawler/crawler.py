@@ -25,6 +25,9 @@ from .fetch import fetch_details
 from .utils import instagram_int
 from .utils import randmized_sleep
 from .utils import retry
+from .utils import get_html
+from .parsingFeed import parseFeedInfo
+from .parsingFeed import parseFeedImageCaption
 
 
 class Logging(object):
@@ -145,6 +148,7 @@ class InsCrawler(Logging):
             return self._get_posts(number)
 
     def get_latest_posts_by_tag(self, tag, num):
+        self.tag = tag
         url = "%s/explore/tags/%s/" % (InsCrawler.URL, tag)
         self.browser.get(url)
         return self._get_posts(num)
@@ -261,36 +265,72 @@ class InsCrawler(Logging):
         TIMEOUT = 600
         browser = self.browser
         key_set = set()
+        user_set = set()
         posts = []
+        users = {}
         pre_post_num = 0
         wait_time = 1
+        read_feed = 0
 
         pbar = tqdm(total=num)
 
-        def start_fetching(pre_post_num, wait_time):
+        def start_fetching(pre_post_num, wait_time, read_feed):
             ele_posts = browser.find(".v1Nh3 a")
             for ele in ele_posts:
                 key = ele.get_attribute("href")
                 if key not in key_set:
+                    # print("key", key)
+                    read_feed += 1
                     dict_post = { "key": key }
                     ele_img = browser.find_one(".KL4Bh img", ele)
                     dict_post["caption"] = ele_img.get_attribute("alt")
                     dict_post["img_url"] = ele_img.get_attribute("src")
 
-                    fetch_details(browser, dict_post)
+                    html = get_html(key+"?__a=1")
+                    try:
+                        img_type = parseFeedImageCaption(dict_post['caption'], dict_post)
+                        user_data = parseFeedInfo(html, dict_post)
+                    except:
+                        print("exception occur")
+                        traceback.print_exc()
+                        continue
+
+                    # 이미지의 타입이 없거나 혹은 이미지의 타입이 음식이 아닌 경우
+                    if not img_type or "음식" not in img_type:
+                        # print("fail:", "no image type or no image loc")
+                        continue
+                    # 피드의 위치가 포함되지 않는 경우
+                    elif not dict_post['location']:
+                        # print("fail:", "image type is not food")
+                        continue
+                    # 피드의 개수가 20개 이하일 경우 500개 이상일 경우 제외
+                    elif user_data['feed_nums'] < 20 and user_data['feed_nums'] > 500:
+                        continue
+                    # 검색한 해시 태그가 피드에 포함되어 있지 않은 경우
+                    # elif "맛집" not in dict_post['hash_tag']:
+                        # print("fail:", "feed does not have hashtag")
+                        # print(dict_post['hash_tag'])
+                        # continue
+                    # print('success')
+                    # 유저 정보 추가
+                    if user_data['username'] not in users:
+                        users[user_data['username']] = user_data
+                        user_set.add(user_data['username'])
+
+                    users[user_data['username']]['feed_urls'].append(dict_post['key'])
 
                     key_set.add(key)
                     posts.append(dict_post)
 
-                    if len(posts) == num:
+                    if len(posts) == num and len(users) == num:
                         break
 
             if pre_post_num == len(posts):
                 pbar.set_description("Wait for %s sec" % (wait_time))
                 sleep(wait_time)
-                pbar.set_description("fetching")
+                pbar.set_description("fetching so far: %s" % (read_feed))
 
-                wait_time *= 2
+                wait_time = 2 # 나중에 조정해봐야지!
                 browser.scroll_up(300)
             else:
                 wait_time = 1
@@ -298,18 +338,23 @@ class InsCrawler(Logging):
             pre_post_num = len(posts)
             browser.scroll_down()
 
-            return pre_post_num, wait_time
+            return pre_post_num, wait_time, read_feed
 
         pbar.set_description("fetching")
-        while len(posts) < num and wait_time < TIMEOUT:
-            post_num, wait_time = start_fetching(pre_post_num, wait_time)
+        while len(posts) < num or len(users) < num:
+            read_feed_before = read_feed
+            post_num, wait_time, read_feed = start_fetching(pre_post_num, wait_time, read_feed)
             pbar.update(post_num - pre_post_num)
             pre_post_num = post_num
 
             loading = browser.find_one(".W1Bne")
             if not loading and wait_time > TIMEOUT / 2:
                 break
+            if read_feed_before == read_feed or read_feed > 10000:
+                print("post_num:", post_num)
+                print("finish")
+                break
 
         pbar.close()
         print("Done. Fetched %s posts." % (min(len(posts), num)))
-        return posts[:num]
+        return posts, users, key_set, user_set
