@@ -35,7 +35,7 @@ def parseFeedInfo(html, dict_post):
 
 def getHashTag(caption):
     hash_tag = []
-    pattern = re.compile(r"#(.*)")
+    pattern = re.compile(r"#(\w+)*")
     for cap in caption.split(" "):
         match = pattern.search(cap)
         if match:
