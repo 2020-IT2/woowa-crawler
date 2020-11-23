@@ -106,15 +106,16 @@ if __name__ == "__main__":
         city_names = '../data/korea_city_names_and_populations.json'
         if not os.path.exists(city_names):
             save_population_to_json()
-        for tag in tqdm(get_city_names(city_names, int(args.part))):
-            if tag == '남양주':
-                continue
-            tag = tag + "맛집"
-            print(tag)
-            post_detail, user_detail, post_set, user_set = get_posts_by_hashtag(tag, args.number or 100, args.debug)
-            output(post_detail, tag+"_post_detail")
-            output(user_detail, tag+"_user_detail")
-            output(list(post_set), tag+"_post_set")
-            output(list(user_set), tag+"_user_set")
+        # for tag in tqdm(get_city_names(city_names, int(args.part))):
+        #     if tag == '남양주':
+        #         continue
+        #     tag = tag + "맛집"
+        #     # print(tag)
+        tag = '강남구맛집'
+        post_detail, user_detail, post_set, user_set = get_posts_by_hashtag(tag, args.number or 100, args.debug)
+        output(post_detail, tag+"_post_detail")
+        output(user_detail, tag+"_user_detail")
+        output(list(post_set), tag+"_post_set")
+        output(list(user_set), tag+"_user_set")
     else:
         usage()

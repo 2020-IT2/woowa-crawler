@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import time
+import requests
 import traceback
 from builtins import open
 from time import sleep
@@ -70,7 +71,7 @@ class InsCrawler(Logging):
         super(InsCrawler, self).__init__()
         self.browser = Browser(has_screen)
         self.page_height = 0
-        # self.login()
+        self.login()
 
     def _dismiss_login_prompt(self):
         ele_login = self.browser.find_one(".Ls00D .Szr5J")
@@ -262,6 +263,10 @@ class InsCrawler(Logging):
             To get posts, we have to click on the load more
             button and make the browser call post api.
         """
+        session_obj = requests.Session()
+        for cookie in self.browser.driver.get_cookies():
+            print(cookie['name'], cookie['value'])
+            session_obj.cookies.set(cookie['name'], cookie['value'])
         TIMEOUT = 600
         browser = self.browser
         key_set = set()
@@ -279,18 +284,20 @@ class InsCrawler(Logging):
             for ele in ele_posts:
                 key = ele.get_attribute("href")
                 if key not in key_set:
-                    # print("key", key)
                     read_feed += 1
                     dict_post = { "key": key }
                     ele_img = browser.find_one(".KL4Bh img", ele)
                     dict_post["caption"] = ele_img.get_attribute("alt")
                     dict_post["img_url"] = ele_img.get_attribute("src")
 
-                    html = get_html(key+"?__a=1")
+                    html = get_html(key+"?__a=1", session_obj)
                     try:
                         img_type = parseFeedImageCaption(dict_post['caption'], dict_post)
                         user_data = parseFeedInfo(html, dict_post)
                     except:
+                        print(html)
+                        output(posts, tag+"_post_detail")
+                        return
                         print("exception occur")
                         traceback.print_exc()
                         continue
@@ -333,7 +340,7 @@ class InsCrawler(Logging):
                 wait_time = 2 # 나중에 조정해봐야지!
                 browser.scroll_up(300)
             else:
-                wait_time = 1
+                wait_time = 3
 
             pre_post_num = len(posts)
             browser.scroll_down()

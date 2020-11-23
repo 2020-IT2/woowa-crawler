@@ -10,6 +10,13 @@ from time import sleep
 from .exceptions import RetryException
 
 
+def output(data, type):
+    filepath = "../data/instagram/" + datetime.today().strftime('%Y-%m-%d') + "/"
+    fileName = "instagram_ver_"+datetime.today().strftime('%Y_%m_%d_%H_%M_%S') + "_" + type + ".json"
+    check_for_dir(filepath)
+    with open(filepath+fileName, "w", encoding="utf8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
 def instagram_int(string):
     return int(string.replace(",", ""))
 
@@ -69,11 +76,14 @@ def save_population_to_json():
 
     return korea_city
 
-def get_html(url):
+def get_html(url, session_obj=None):
     headers = {
         "user-agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36"
     }
-    html = requests.get(url, headers = headers).text
+    if session_obj:
+        return session_obj.get(url, headers = headers).text
+    else:
+        html = requests.get(url, headers = headers).text
     return html
 
 def retry(attempt=10, wait=0.3):
