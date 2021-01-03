@@ -10,13 +10,6 @@ from time import sleep
 from .exceptions import RetryException
 
 
-def output(data, type):
-    filepath = "../data/instagram/" + datetime.today().strftime('%Y-%m-%d') + "/"
-    fileName = "instagram_ver_"+datetime.today().strftime('%Y_%m_%d_%H_%M_%S') + "_" + type + ".json"
-    check_for_dir(filepath)
-    with open(filepath+fileName, "w", encoding="utf8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
 def instagram_int(string):
     return int(string.replace(",", ""))
 
@@ -48,6 +41,19 @@ def get_city_names(json_data, part):
         print(city_name)
         city_names.append(city_name)
     return city_names
+
+def get_restaurant_list(part):
+    json_data = read_json('../data/restaurnt_list.json')
+    if part == 0:
+        return json_data[:40000]
+    elif part == 1:
+        return json_data[40000:80000]
+    else:
+        return json_data[80000:120000]
+
+def get_restaurant_foodcategory_list(part):
+    json_data = read_json('../data/ssgi_data_강서구_닭_오리요리.json')
+
 
 def save_population_to_json():
     # 엑셀파일 열기

@@ -2,6 +2,7 @@
 import codecs
 import re
 import json
+import unicodedata
 from datetime import datetime
 
 regex = re.compile(r"window._sharedData = (.*?);</script>", re.DOTALL)
@@ -15,7 +16,10 @@ def parseFeedInfo(html, dict_post):
     hash_tag = []
     original_caption = ""
     if 'edge_media_to_caption' in dict_data and len(dict_data["edge_media_to_caption"]['edges']) >= 1 :
-        hash_tag = getHashTag(dict_data["edge_media_to_caption"]['edges'][0]['node']['text'])
+        caption = dict_data["edge_media_to_caption"]['edges'][0]['node']['text']
+        if not isHangul(caption):
+            caption = unicodedata.normalize('NFC', caption)
+        hash_tag = getHashTag(caption)
         original_caption = dict_data['edge_media_to_caption']['edges'][0]['node']['text']
     needed_data = {
         "time" : datetime.utcfromtimestamp(int(dict_data['taken_at_timestamp'])).strftime('%Y-%m-%d %H:%M:%S'), # 글을 올린 시간
@@ -35,12 +39,16 @@ def parseFeedInfo(html, dict_post):
 
 def getHashTag(caption):
     hash_tag = []
-    pattern = re.compile(r"#(.*)")
+    pattern = re.compile(r"#(\w+)*")
     for cap in caption.split(" "):
-        match = pattern.search(cap)
+        match = pattern.findall(cap)
         if match:
-            hash_tag.append(match.group(1))
+            hash_tag.extend(match)
     return hash_tag
+
+def isHangul(text):
+    hanCount = len(re.findall(u'[\u3130-\u318F\uAC00-\uD7A3]+', text))
+    return hanCount > 0
 
 def getUserData(dict_owner):
     owner = {
